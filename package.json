@@ -1,0 +1,25 @@
+{
+  "name": "ptest",
+  "version": "0.0.1",
+  "description": "just for testing personal snippet",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/qiugh/ptest.git"
+  },
+  "keywords": [
+    "test"
+  ],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/qiugh/ptest/issues"
+  },
+  "homepage": "https://github.com/qiugh/ptest#readme",
+  "dependencies": {
+    "moment": "^2.20.1"
+  }
+}
