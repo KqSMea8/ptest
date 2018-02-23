@@ -1,7 +1,7 @@
 let fs = require('fs');
 let Crawler = require('crawler');
 let logger = require('./tool/logger.js').getlogger({
-    prgname: 'sunland', datePattern: 'YYYY-MM-DD'
+    prgname: 'sunland', datePattern: 'YYYY-MM-DD', logdir: './log/'
 });
 
 let crawler, cates;
@@ -53,6 +53,8 @@ function getMajor(cate) {
 }
 
 function getDetail(major) {
+    /*     fs.appendFileSync('major.csv', [major.majorName, major.majorUrl, major.name].map(it => (it + '').replace(/[,'"\s]+/g, ' ')).join() + '\n');
+        return; */
     crawler.queue({
         uri: major.majorUrl,
         callback: (err, res, done) => {
@@ -83,6 +85,10 @@ function getDetail(major) {
 }
 
 function getCollege(province) {
+    if (!province.provinceUrl.match(/planid=\d+/)) {
+        fs.appendFileSync('sunland.csv', ['n/a', 'n/a', province.majorName, province.majorLevel, province.name, province.score, 'n/a', province.provinceUrl, province.majorUrl].map(it => (it + '').replace(/[,'"\s]+/g, ' ')).join() + '\n');
+        return;
+    }
     crawler.queue({
         uri: province.provinceUrl,
         callback: (err, res, done) => {
