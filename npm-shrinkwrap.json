@@ -1,0 +1,16 @@
+{
+	"name": "ptest",
+	"version": "^0.0.1",
+	"dependencies": {
+		"request": {
+			"version": "^2.83.0",
+			"dependencies": {
+				"tunnel-agent": {
+					"version": "0.4.3",
+					"from": "tunnel-agent@>=0.4.1",
+					"resolved": "git://github.com/bda-research/tunnel-agent.git#timeout"
+				}
+			}
+		}
+	}
+}
