@@ -7,10 +7,10 @@ let historyfile = '../../result/video/yy_gxb_top' + topn + '_contributor';
 let hidArr = getHistory(), daysInMonth = moment(month, 'YYYY-MM-DD').daysInMonth();
 let rstfile = '../../result/video/yy_gxb_top_contributor_tracking.' + month + '.csv';
 
-readConsumeData();
-contributorStat();
+readConsume();
+userStat();
 
-function readConsumeData() {
+function readConsume() {
 	for (let file of files) {
 		console.log('read file: ' + file);
 		fs.readFileSync(file).toString().trim().split('\n').forEach((line) => {
@@ -20,21 +20,24 @@ function readConsumeData() {
 	}
 }
 
-function contributorStat() {
-	fs.writeFileSync(rstfile, '\ufeff');
-	hidArr.forEach(function (item) {
-		let consume = Math.round((curData[item.id].sum / curData[item.id].count) / 7 * daysInMonth);
-		fs.appendFileSync(rstfile, [item.addTime, item.id, consume].join() + '\n');
-	});
+function userStat() {
 	let ids = Object.keys(curData);
 	console.log('total user: ' + ids.length);
 	ids.forEach(function (contributorid) {
-		curData[contributorid].income = Math.round(curData[contributorid].sum / curData[contributorid].count / 7 * daysInMonth);
+		curData[contributorid].totalConsume = Math.round(curData[contributorid].sum / curData[contributorid].count / 7 * daysInMonth);
 	});
-	ids.sort(function (min, max) { return curData[max].income - curData[min].income });
+
+	fs.writeFileSync(rstfile, '\ufeff');
+	hidArr.forEach(function (item) {
+		let totalConsume = 'NaN';
+		if (curData[item.id]) totalConsume = curData[item.id].totalConsume;
+		fs.appendFileSync(rstfile, [item.addTime, item.id, totalConsume].join() + '\n');
+	});
+
+	ids.sort(function (min, max) { return curData[max].totalConsume - curData[min].totalConsume });
 	let tempyTopn = topn > ids.length ? ids.length : topn;
 	for (let i = 0; i < tempyTopn; i++) {
-		fs.appendFileSync(rstfile, [month, ids[i], curData[ids[i]].consume].join() + '\n');
+		fs.appendFileSync(rstfile, [month, ids[i], curData[ids[i]].totalConsume].join() + '\n');
 		fs.appendFileSync(historyfile, [month, ids[i]].join() + '\n');
 	}
 }
