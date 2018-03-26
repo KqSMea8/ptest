@@ -1,15 +1,28 @@
+let redis = require('redis');
+let moment = require('moment');
 let Crawler = require('crawler');
 let MongoClient = require('mongodb').MongoClient;
-let logger = require('./tool/logger.js').getlogger({
-    logdir: './log/',
+let logger = require('../util/logger.js').getlogger({
+    logdir: '../log/',
     prgname: 'ifeng.local',
     datePattern: 'YYYY-MM-DD-HH'
 });
-
-let cities = hotCity();
+let kvs = {
+    "bodyImgs": 'body.img',
+    "docid": "documentId",
+    "body": "body.text",
+    "real_url": "body.wwwurl",
+    "title": "body.title",
+    "publishtime": "body.updateTime",
+    "publisher": "body.source",
+    "ts": "ts",
+    "category": "city"
+}
+let cities = hotCity(), redisConn;
 let mongo = null, mongoCnt = 0, requestCnt = 1;
-let crawler = new Crawler({ jquery: false, retries: 0, maxConnections: 5 });
-let mongoUrl = 'mongodb://localhost:27017/ifeng';
+let curTs = moment(moment() - 86400000).format('YYYY/MM/DD HH:mm:ss');
+let crawler = new Crawler({ jquery: false, retries: 0, maxConnections: 4 });
+let mongoUrl = 'mongodb://127.0.0.1:27017/admin';
 
 start();
 
@@ -19,13 +32,17 @@ function start() {
         requestCnt = 0;
     })
     MongoClient.connect(mongoUrl).then((conn) => {
-        mongo = conn;
+        mongo = conn.db('ifeng');
+        mongo.tmpConn = conn;
         mongo.collection('detail_local').createIndex({ documentId: 1 });
         mongo.collection('news_local').createIndex({ documentId: 1 });
-        for (let city of cities) {
-            city.page = 1;
-            getList(city);
-        }
+        redisConn = redis.createClient('6379', '10.19.140.128');
+        redisConn.select(5, function () {
+            for (let city of cities) {
+                city.page = 1;
+                getList(city);
+            }
+        })
     })
 }
 
@@ -56,7 +73,7 @@ function getList(city) {
                 logger.info('get List success', city.name, city.page, totalPage);
             } catch (e) {
                 if (err) {
-                    logger.error('network error', err + '');
+                    logger.error('network error', err);
                     getList(city)
                 } else if (res.statusCode != 200) {
                     logger.error('statusCode error', res.statusCode, res.body);
@@ -99,6 +116,8 @@ function getDetail(city, item) {
                 return done();
             }
             detail.documentId = detail.body.staticId;
+            detail.ts = moment().format('YYYY-MM-DD HH:mm:ss');
+            detail.city = city.name;
             insertDetail(detail);
             logger.info('get detail success', item.link.url)
             done();
@@ -107,6 +126,10 @@ function getDetail(city, item) {
 }
 
 function insertDetail(detail) {
+    if (detail.body.wwwurl && (detail.body.updateTime >= curTs)) {
+        let doc = mergeData(detail, '凤凰');
+        redisConn.publish('CrawlNews', JSON.stringify(doc));
+    }
     mongoCnt++;
     mongo.collection('detail_local').insert(detail).then(() => {
         mongoCnt--;
@@ -128,9 +151,27 @@ function insertList(news) {
 
 function mongoDone() {
     if (!mongoCnt && !requestCnt) {
-        logger.info('all insert done');
-        mongo.close();
+        logger.info('all done,start merge');
+        mongo.tmpConn.close();
+        redisConn.end();
     }
+}
+
+function mergeData(doc, platform) {
+    let rst = {
+        content_type: 'news',
+        userName: platform,
+        comment_count: 0
+    };
+    Object.keys(kvs).forEach(key => {
+        let value = kvs[key];
+        let newValue = eval("doc." + value);
+        rst[key] = newValue;
+    });
+    rst.publishtime = rst.publishtime.replace(/\//g, '-');
+    rst.bodyImgs = rst.bodyImgs || [];
+    rst.images = (rst.bodyImgs).slice(0, 3);
+    return rst;
 }
 
 function hotCity() {
