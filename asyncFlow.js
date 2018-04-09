@@ -1,49 +1,35 @@
-function asyncFlow(funs, xargs, callback) {
-    if (typeof funs == 'function') funs = [funs];
-    if (!(funs instanceof Array)) return;
-    if (funs.filter(fun => (typeof fun == 'function')).length != funs.length) return;
+function asyncFlow(options, callback) {
+    if (!options) return;
+    let funcs = options.funcs, xargs = options.xargs;
+
+    if (typeof funcs == 'function') funcs = [funcs];
+    if (!(funcs instanceof Array)) return;
+    if (!funcs.every(func => typeof func == 'function')) return;
 
     if (typeof xargs != 'object') return;
     if (!(xargs instanceof Array)) xargs = [xargs];
-    if (xargs.filter(xarg => (typeof xarg == 'object')).length != xargs.length) return;
+    if (xargs.every(xarg => typeof xarg == 'object')) return;
 
-    let onlyOneFun = false, onlyOneXarg = false;
-    if (funs.length != xargs.length) {
-        if (funs.length == 1) {
-            onlyOneFun = true;
-        } else if (xargs.length == 1) {
-            onlyOneXarg = true;
-        } else {
+    if (funcs.length == 1 && xargs.length == 1) return;
+    if (funcs.length != xargs.length && funcs.length != 1 && xargs.length != 1) return;
+
+    let funcIdx = 0, xargIdx = 0, tmpResults = [];
+    executeFuncs();
+
+    function executeFuncs() {
+        if (funcIdx >= funcs.length || xargIdx >= xargs.length) {
+            if (typeof callback == 'function') callback(null, tmpResults);
             return;
         }
-    }
-    let rst = [];
-    executeFuncs();
-    function executeFuncs() {
-        if (!funs.length || !xargs.length) return callback(null, rst);
-        let fun = onlyOneFun ? funs[0] : funs.shift();
-        let xarg = onlyOneXarg ? xargs[0] : xargs.shift();
-        fun(xarg, function (error, result) {
-            rst.push({ error, result });
+        let func = funcs[funcIdx];
+        let xarg = xargs[xargIdx];
+        func(xarg, function (error, result) {
+            tmpResults.push({ error, result });
+            funcIdx += (funcs.length == 1 ? 0 : 1);
+            xargIdx += (xargs.length == 1 ? 0 : 1);
             executeFuncs();
         });
     }
 }
 
-function asyncFun1(option, cb) {
-    setTimeout(() => {
-        console.log(1, option);
-        cb();
-    }, 2000);
-}
-
-function asyncFun2(option, cb) {
-    setTimeout(() => {
-        console.log(2, option);
-        cb();
-    }, 2000);
-}
-
-asyncFlow([asyncFun1,asyncFun2], [{ a: 1 }], (err, res) => {
-    console.log(res)
-})
+exports.asyncFlow = asyncFlow
