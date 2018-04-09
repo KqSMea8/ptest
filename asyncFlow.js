@@ -8,7 +8,7 @@ function asyncFlow(options, callback) {
 
     if (typeof xargs != 'object') return;
     if (!(xargs instanceof Array)) xargs = [xargs];
-    if (xargs.every(xarg => typeof xarg == 'object')) return;
+    if (!xargs.every(xarg => typeof xarg == 'object')) return;
 
     if (funcs.length == 1 && xargs.length == 1) return;
     if (funcs.length != xargs.length && funcs.length != 1 && xargs.length != 1) return;
@@ -21,8 +21,7 @@ function asyncFlow(options, callback) {
             if (typeof callback == 'function') callback(null, tmpResults);
             return;
         }
-        let func = funcs[funcIdx];
-        let xarg = xargs[xargIdx];
+        let func = funcs[funcIdx], xarg = xargs[xargIdx];
         func(xarg, function (error, result) {
             tmpResults.push({ error, result });
             funcIdx += (funcs.length == 1 ? 0 : 1);
