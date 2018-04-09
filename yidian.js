@@ -1,6 +1,5 @@
 let moment = require('moment');
 let Crawler = require('crawler');
-let merge = require('./mergeData.js').merge;
 let MongoClient = require('mongodb').MongoClient;
 let logger = require('../util/logger.js').getlogger({
     logdir: '../log/',
@@ -8,13 +7,14 @@ let logger = require('../util/logger.js').getlogger({
     datePattern: 'YYYY-MM-DD-HH'
 });
 
-let today = moment().format('YYYY-MM-DD');
-let cities = getCity(), cityIdx = cities.length - 1;
+let cities = getCity(), cityIdx = cities.length - 48;
 let sessionid = 'JSESSIONID=ucF0u88t6hg-MighmkxBGw';
+let curTs = moment(moment() - 86400000).format('YYYY-MM-DD HH:mm:ss');
 let crawler = new Crawler({ jquery: false, retries: 0, rateLimit: 5000 });
 let mongo = null, channelNum = 1, mongoCnt = 0, requestCnt = 1;
 let mongoUrl = 'mongodb://wifi:zenmen@10.19.83.217:27017/ifeng';
-mongoUrl = 'mongodb://127.0.0.1:27017/yidian';
+mongoUrl = 'mongodb://wifi:zenmen@127.0.0.1:27018/admin';
+mongoUrl = 'mongodb://127.0.0.1:27017/admin';
 
 start();
 
@@ -27,9 +27,9 @@ function start() {
         requestCnt = 0;
     })
     MongoClient.connect(mongoUrl).then((conn) => {
-        mongo = conn;
+        mongo = conn.db('yidian');
+        mongo.tmpConn = conn;
         mongo.collection('detail_local').createIndex({ docid: 1 });
-        mongo.collection('news_local').createIndex({ docid: 1 });
         switchCity();
     })
 }
@@ -52,6 +52,9 @@ function switchCity() {
                     getList(city, []);
                 } else {
                     logger.info('switch city error', city);
+                    let tmp = cities[cityIdx];
+                    cities[cityIdx] = cities[cityIdx - 1];
+                    cities[cityIdx - 1] = tmp;
                     switchCity();
                 }
             } catch (e) {
@@ -81,7 +84,6 @@ function getList(city, docList) {
         },
         callback: (err, res, done) => {
             try {
-                let ist = false;
                 let items = JSON.parse(res.body).result;
                 if (items && items.length) {
                     logger.info('got list, length: ' + items.length, city);
@@ -97,27 +99,20 @@ function getList(city, docList) {
                         return doc;
                     });
                     logger.info(city.name + " " + city.page + ' filter total length: ' + items.length)
-
-                    let rst = items.filter(item => moment(item.date).format('YYYY-MM-DD') == today);
-                    logger.info(city.name + " " + city.page + ' today total length: ' + rst.length)
+                    let rst = items.filter(item => item.date >= curTs);
+                    logger.info(city.name + " " + city.page + ' total length: ' + rst.length)
                     logger.info(docList.length, rst.length + docList.length)
                     docList = docList.concat(rst);
-
                     if (rst.length == 0) {
-                        ist = true;
-                        logger.info('get all today news, start get detail:' + docList.length);
+                        logger.info('get all news, start get detail:' + docList.length);
                         getDetail(city, docList, docList.length - 1);
                     } else {
                         city.page = city.page + 1;
                         getList(city, docList);
                     }
                 } else {
-                    ist = true;
                     logger.info('no list data:', city, res.body)
                     getDetail(city, docList, docList.length - 1);
-                }
-                if (ist && docList.length) {
-                    insertList(docList);
                 }
             } catch (e) {
                 if (err) {
@@ -167,8 +162,6 @@ function getDetail(city, docList, idx) {
     })
 }
 
-
-
 function insertDetail(detail) {
     mongoCnt++;
     mongo.collection('detail_local').insert(detail).then(() => {
@@ -177,23 +170,62 @@ function insertDetail(detail) {
     })
 }
 
-function insertList(news) {
-    mongoCnt++;
-    let batch = mongo.collection('news_local').initializeUnorderedBulkOp();
-    for (let n of news) {
-        batch.insert(n);
-    }
-    batch.execute().then(() => {
-        mongoCnt--;
-        mongoDone();
-    });
-}
-
 function mongoDone() {
     if (!mongoCnt && !requestCnt) {
         logger.info('all insert done');
-        merge(mongo, '一点资讯');
+        merge();
     }
+}
+
+function merge() {
+    mongo.collection('detail_local').find({ 'date': { $gte: curTs } }).toArray().then(docs => {
+        let unique = {};
+        docs.forEach(doc => {
+            unique[doc['docid']] = doc;
+        });
+        docs = Object.keys(unique).map(id => mergeData(unique[id]));
+        return docs;
+    }).then(docs => {
+        let bulk = mongo.collection('final_out').initializeUnorderedBulkOp();
+        docs.forEach(doc => {
+            bulk.find({ docid: doc.docid }).upsert().update({
+                $setOnInsert: doc
+            })
+        })
+        return bulk.execute();
+    }).then(() => {
+        mongo.tmpConn.close();
+    })
+}
+
+function mergeData(doc) {
+    let rst = {
+        content_type: 'news',
+        userName: '一点资讯',
+        comment_count: 0
+    }, kvs = {
+        "bodyImgs": 'image_urls',
+        "docid": "docid",
+        "body": "content",
+        "real_url": "url",
+        "title": "title",
+        "publishtime": "date",
+        "publisher": "source",
+        "ts": "ts",
+        "category": "city"
+    };
+    Object.keys(kvs).forEach(key => {
+        let value = kvs[key];
+        let newValue = eval("doc." + value);
+        rst[key] = newValue;
+    });
+    rst.bodyImgs = rst.bodyImgs || [];
+    rst.bodyImgs = rst.bodyImgs.map(img => {
+        return { url: 'http://i1.go2yd.com/image.php?url=' + img };
+    });
+    rst.images = (rst.bodyImgs).slice(0, 3);
+    rst.publishtime = Number(new Date(rst.publishtime));
+    return rst;
 }
 
 function getIdxs(page) {
