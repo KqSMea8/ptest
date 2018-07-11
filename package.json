@@ -20,7 +20,7 @@
   },
   "homepage": "https://github.com/qiugh/ptest#readme",
   "dependencies": {
-    "crawler": "^1.1.2",
+    "crawler": "^1.1.4",
     "line-by-line": "^0.1.6",
     "moment": "^2.20.1",
     "winston": "^2.4.0"
