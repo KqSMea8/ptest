@@ -10,8 +10,8 @@ let BaseRequest;
 let pass_ticket;
 let UA = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_13_4) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/69.0.3485.0 Safari/537.36';
 let cralwer = new Cralwer({ retries: 0, jquery: false });
-let headers1 = { 'Referer': 'https://wx2.qq.com/', 'User-Agent': UA };
-let headers2 = { 'User-Agent': UA, 'Origin': 'https://wx2.qq.com', 'Referer': 'https://wx2.qq.com/', 'Content-Type': 'application/json;charset=UTF-8' };
+let headers1 = { 'Referer': 'https://wx.qq.com/', 'User-Agent': UA };
+let headers2 = { 'User-Agent': UA, 'Origin': 'https://wx.qq.com', 'Referer': 'https://wx.qq.com/', 'Content-Type': 'application/json;charset=UTF-8' };
 
 getUUID();
 
@@ -95,7 +95,7 @@ function getCookie(params, next) {
 }
 
 function wxInit(params) {
-    let url = 'https://wx2.qq.com/cgi-bin/mmwebwx-bin/webwxinit?r=' + (~new Date()) + '&pass_ticket=' + encodeURI(pass_ticket);
+    let url = 'https://wx.qq.com/cgi-bin/mmwebwx-bin/webwxinit?r=' + (~new Date()) + '&pass_ticket=' + encodeURIComponent(pass_ticket);
     BaseRequest = {
         DeviceID: getDeviceID(),
         Sid: params.wxsid,
@@ -112,6 +112,7 @@ function wxInit(params) {
             try {
                 data = JSON.parse(res.body);
                 SyncKey = data.SyncKey;
+                console.log('init SYNCKEY', SyncKey)
             } catch (e) {
                 console.log('wxInit error: ', e, err || (res.statusCode != 200) || res.body);
             }
@@ -123,14 +124,15 @@ function wxInit(params) {
 }
 
 function checkNews() {
-    setInterval(getNews, 1000);
+    setInterval(getNews, 5000);
 }
 
 function getNews() {
     let rr = ~new Date();
     console.log('start to get news')
+    BaseRequest.DeviceID = getDeviceID();
     cralwer.queue({
-        uri: 'https://wx2.qq.com/cgi-bin/mmwebwx-bin/webwxsync?sid=' + BaseRequest.Sid + '&skey=' + BaseRequest.Skey + '&lang=zh_CN&pass_ticket=' + encodeURI(pass_ticket),
+        uri: 'https://wx.qq.com/cgi-bin/mmwebwx-bin/webwxsync?sid=' + BaseRequest.Sid + '&skey=' + BaseRequest.Skey + '&lang=zh_CN&pass_ticket=' + encodeURI(pass_ticket),
         method: 'POST',
         headers: headers2,
         body: JSON.stringify({ BaseRequest, SyncKey, rr }),
@@ -138,7 +140,9 @@ function getNews() {
             let data;
             try {
                 data = JSON.parse(res.body);
+                //console.log(res.body)
                 SyncKey = data.SyncKey;
+                //console.log('getnews',SyncKey)
             } catch (e) {
                 console.log('getNews error: ', e, err || (res.statusCode != 200) || res.body);
             }
