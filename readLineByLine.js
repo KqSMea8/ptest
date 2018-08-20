@@ -17,5 +17,5 @@ lineReader.on('close', function () {
 });
 
 function dealwith(line) {
-
+    console.log(line);
 }
