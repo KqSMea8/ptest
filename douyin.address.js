@@ -1,7 +1,3 @@
-/**
- * @file 抖音抓取
- * @author qiuguanghui<qiuguanghui@baidu.com>
- */
 
 let fs = require('fs');
 let Crawler = require('crawler');

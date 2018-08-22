@@ -1,7 +1,3 @@
-/**
- * @file 小红书抓取
- * @author qiuguanghui<qiuguanghui@baidu.com>
- */
 
 let fs = require('fs');
 let Crawler = require('crawler');

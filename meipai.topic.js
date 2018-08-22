@@ -1,7 +1,3 @@
-/**
- * @file 美拍抓取
- * @author qiuguanghui<qiuguanghui@baidu.com>
- */
 
 let fs = require('fs');
 let util = require('util');
