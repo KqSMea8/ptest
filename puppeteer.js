@@ -6,7 +6,7 @@ const devices = require('puppeteer/DeviceDescriptors');
 const iPhone = devices['iPhone 6'];
 let exists = {}
 let seedFile = 'newurl.column2';
-fs.readdirSync('/Users/qiuguanghui/Html/xiaohongshu').forEach(file => {
+fs.readdirSync('~/Html/xiaohongshu').forEach(file => {
     exists[file] = 1;
 });
 console.log('exists :', Object.keys(exists).length);
