@@ -127,3 +127,4 @@ function saveHtml(shop, html) {
 	logger.info(moment().format('YYYY-MM-DD HH:mm:ss'), 'save page ', shop)
 	let filename = shop.url.match(/\/\/(.*com)/)[1] + '.p' + shop.page + '.html' + today;
 	fs.appendFileSync(dir + filename, html);
+}
