@@ -34,6 +34,7 @@ start()
 
 async function start() {
     let browser = await puppeteer.launch();
+    //let browser = await puppeteer.launch({args:['--no-sandbox','--proxy-server=yq01-qiugh.epc.baidu.com:8888']});
     let page = await browser.newPage();
     //await page.emulate(iPhone);
     for (let url of urls) {
